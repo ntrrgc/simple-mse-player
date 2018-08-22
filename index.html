@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Simple MSE player</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #111;
+        }
+        body {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+        #video {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+<!--<script src="dash.all.debug.js"></script>-->
+<!--<video data-dashjs-player autoplay controls id="video" src="dash/stream.mpd"></video>-->
+<video autoplay controls id="video" src="dash/stream.mpd"></video>
+<script src="player.js"></script>
+</body>
+</html>

@@ -11,12 +11,13 @@ function requestXML(url) {
     return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open("GET", url, true);
+        xhr.responseType = "document";
         xhr.onreadystatechange = () => {
             if (xhr.readyState === 4) {
-                if (xhr.status === 200) {
+                if (xhr.status >= 200 && xhr.status < 300) {
                     resolve(xhr.responseXML);
                 } else {
-                    reject(new NetworkError(`Error ${xhr.status}: xhr.responseText`));
+                    reject(new NetworkError(`Error ${xhr.status}`));
                 }
             }
         };
@@ -31,10 +32,10 @@ function requestBinaryMedia(url) {
         xhr.responseType = "arraybuffer";
         xhr.onreadystatechange = () => {
             if (xhr.readyState === 4) {
-                if (xhr.status === 200) {
+                if (xhr.status >= 200 && xhr.status < 300) {
                     resolve(xhr.response);
                 } else {
-                    reject(new NetworkError(`Error ${xhr.status}: xhr.responseText`));
+                    reject(new NetworkError(`Error ${xhr.status}`));
                 }
             }
         };

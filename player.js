@@ -97,8 +97,10 @@ function formatTimeSeconds(time, includeFraction) {
 }
 
 class AdaptationSetFeeder {
-    constructor(mediaElement, mediaSource, mpdPath, mpd, adaptationSet) {
+    constructor(mediaElement, mediaSource, mpdPath, mpd, adaptationSet, movieDuration) {
         this.mediaElement = mediaElement;
+        this.mediaSource = mediaSource;
+        this.movieDuration = movieDuration;
         const container = this.container = adaptationSet.getAttribute("mimeType");
         const representation = xpathSingle(mpd, adaptationSet, "./mpd:Representation");
         const codec = representation.getAttribute("codecs");
@@ -169,22 +171,26 @@ class AdaptationSetFeeder {
         this.sourceBuffer.appendBuffer(initializationSegment);
         initializationSegment = null; // free memory
 
-        for (let segment of this.segmentTable) {
-            const segmentBlob = await requestBinaryMedia(segment.path);
-            await this.updateEnded();
-            while (true) {
-                try {
-                    this.sourceBuffer.appendBuffer(segmentBlob);
-                    break;
-                } catch (ex) {
-                    if (ex instanceof DOMException && ex.name == "QuotaExceededError") {
-                        console.log("QuotaExceeded");
-                        await waitMilliseconds(5000);
-                    } else {
-                        throw ex;
+        while (true) {
+            for (let segment of this.segmentTable) {
+                const segmentBlob = await requestBinaryMedia(segment.path);
+                await this.updateEnded();
+                while (true) {
+                    try {
+                        this.sourceBuffer.appendBuffer(segmentBlob);
+                        break;
+                    } catch (ex) {
+                        if (ex instanceof DOMException && ex.name == "QuotaExceededError") {
+                            console.log("QuotaExceeded");
+                            await waitMilliseconds(5000);
+                        } else {
+                            throw ex;
+                        }
                     }
                 }
             }
+            await this.updateEnded();
+            this.sourceBuffer.timestampOffset += this.movieDuration;
         }
     }
 
@@ -205,11 +211,20 @@ class AdaptationSetFeeder {
     }
 }
 
+function parseMovieDuration(duration) {
+    const [hours, minutes, seconds] = /^PT(\d+H)?(\d+M)?(\d+(\.\d+)?)S$/
+        .exec(duration)
+        .slice(1)
+        .map(x => x !== undefined ? parseFloat(x.slice(0, x.length - 1)) : 0);
+    return seconds + minutes * 60 + hours * 3600;
+}
+
 async function parseManifest(mediaElement, mediaSource, mpdPath) {
     mpd = await requestXML(mpdPath);
+    const movieDuration = parseMovieDuration(xpathSingle(mpd, mpd, "/mpd:MPD").getAttribute("mediaPresentationDuration"));
     feeders = [];
     for (let adaptationSet of xpathList(mpd, mpd, "/mpd:MPD/mpd:Period[1]/mpd:AdaptationSet")) {
-        feeders.push(new AdaptationSetFeeder(mediaElement, mediaSource, mpdPath, mpd, adaptationSet));
+        feeders.push(new AdaptationSetFeeder(mediaElement, mediaSource, mpdPath, mpd, adaptationSet, movieDuration));
     }
 }
 
